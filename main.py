@@ -2174,7 +2174,3 @@ def start_bot():
 
 if __name__ == '__main__':
     start_bot()
-    except Exception as e:
-        logger.error(f"Bot起動エラー: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
