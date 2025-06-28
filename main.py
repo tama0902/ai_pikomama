@@ -2166,8 +2166,9 @@ def keep_alive():
 # Botの起動前にkeep_alive()を呼び出す
 if __name__ == '__main__':
     keep_alive()
-    bot.run(TOKEN)
-        except Exception as e:
-            logger.error(f"Bot起動エラー: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        logger.error(f"Bot起動エラー: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
