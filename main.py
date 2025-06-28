@@ -2154,7 +2154,6 @@ if __name__ == "__main__":
             logger.error(f"Bot起動エラー: {e}")
             import traceback
             logger.error(traceback.format_exc())
-    return "Bot is alive!"
 
 def run_flask():
     app.run(host='0.0.0.0', port=8080) # Replitのデフォルトポート
@@ -2163,11 +2162,18 @@ def keep_alive():
     server = Thread(target=run_flask)
     server.start()
 
-# Botの起動前にkeep_alive()を呼び出す
-if __name__ == '__main__':
-    keep_alive()
+def start_bot():
+    keep_alive() # Webサーバーを起動
     try:
-        bot.run(TOKEN)
+        bot.run(TOKEN) # Discordボットを起動
+    except Exception as e:
+        logger.error(f"Bot起動エラー: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+    return "Bot is alive!"
+
+if __name__ == '__main__':
+    start_bot()
     except Exception as e:
         logger.error(f"Bot起動エラー: {e}")
         import traceback
