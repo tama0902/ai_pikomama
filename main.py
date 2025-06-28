@@ -33,7 +33,7 @@ def create_required_directories():
     
     for dir_path in required_dirs:
         dir_path.mkdir(parents=True, exist_ok=True)
-        print(f"📁 ディレクトリ確認: {dir_path}")
+        print(f"ディレクトリ確認: {dir_path}")
 
 # 必要なディレクトリを作成
 create_required_directories()
@@ -56,7 +56,7 @@ PREMIUM_USER_MODEL = "gpt-4.1"
 
 # テストサーバーID（スラッシュコマンドの即座反映用）
 # Botが参加しているサーバーのIDに変更してください
-TEST_GUILD_ID = 1383696841450721442  # Botがこのサーバーに招待されている必要があります
+TEST_GUILD_ID = 1384737783679029328  # Botがこのサーバーに招待されている必要があります
 
 # settings.jsonから設定を読み込む
 settings_path = script_dir / "settings.json"
@@ -1033,10 +1033,38 @@ async def set_custom_prompt_article_command(interaction: discord.Interaction):
     await interaction.response.send_modal(modal)
 
 # メモ作成用カスタムプロンプト設定のModalクラス
-class CustomMemoPromptModal(discord.ui.Modal, title='メモ作成用カスタムプロンプト設定'):    def __init__(self):        super().__init__()    # テキスト入力エリア（複数行対応）    prompt_input = discord.ui.TextInput(        label='カスタムプロンプト',        placeholder='メモ作成用のプロンプトを入力してください...
-改行も使用できます。
+class CustomMemoPromptModal(discord.ui.Modal, title='メモ作成用カスタムプロンプト設定'):
+    def __init__(self, current_prompt=""):
+        super().__init__()
+        # テキスト入力エリア（複数行対応）
+        self.prompt_input = discord.ui.TextInput(
+            label='カスタムプロンプト',
+            placeholder=("""メモ作成用のプロンプトを入力してください...\n"""
+                        """改行も使用できます。\n\n"""
+                        """※ 空のまま送信するとカスタムプロンプトが無効になり、デフォルトプロンプトが使用されます。"""),
+            style=discord.TextStyle.paragraph,  # 複数行入力
+            max_length=2000,
+            required=False,
+            default=current_prompt
+        )
+        self.add_item(self.prompt_input)
 
-※ 空のまま送信するとカスタムプロンプトが無効になり、デフォルトプロンプトが使用されます。',        style=discord.TextStyle.paragraph,  # 複数行入力        max_length=2000,        required=False    )    async def on_submit(self, interaction: discord.Interaction):        try:            prompt = self.prompt_input.value.strip()  # 前後の空白を削除                        # ユーザーデータを読み込み（存在しない場合は新規作成）            user_id = interaction.user.id            user_data = load_user_data(user_id)            if user_data is None:                user_data = {                    "custom_prompt_x_post": "",                    "custom_prompt_article": "",                    "custom_prompt_memo": "",                    "status": "premium",                    "last_used_date": "",                    "daily_usage_count": 0                }
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            prompt = self.prompt_input.value.strip()  # 前後の空白を削除
+            
+            # ユーザーデータを読み込み（存在しない場合は新規作成）
+            user_id = interaction.user.id
+            user_data = load_user_data(user_id)
+            if user_data is None:
+                user_data = {
+                    "custom_prompt_x_post": "",
+                    "custom_prompt_article": "",
+                    "custom_prompt_memo": "",
+                    "status": "premium",
+                    "last_used_date": "",
+                    "daily_usage_count": 0
+                }
             
             # メモ用カスタムプロンプトを更新
             user_data["custom_prompt_memo"] = prompt
