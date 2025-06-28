@@ -51,7 +51,7 @@ TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # OpenAIモデル設定
-FREE_USER_MODEL = "gpt-4.1-mini"
+
 PREMIUM_USER_MODEL = "gpt-4.1"
 
 # テストサーバーID（スラッシュコマンドの即座反映用）
@@ -63,9 +63,8 @@ settings_path = script_dir / "settings.json"
 if settings_path.exists():
     with open(settings_path, 'r', encoding='utf-8') as f:
         settings = json.load(f)
-        FREE_USER_DAILY_LIMIT = settings.get("free_user_daily_limit", 5)
-else:
-    FREE_USER_DAILY_LIMIT = 5  # デフォルト値
+        
+
 
 # カスタムログハンドラー（書き込み時のみファイルを開く）
 class SyncFriendlyFileHandler(logging.Handler):
@@ -292,7 +291,7 @@ def migrate_user_data(user_data, user_id, username):
         "custom_prompt_x_post": "",
         "custom_prompt_article": "",
         "custom_prompt_memo": "",
-        "status": "free",
+        "status": "premium",
         "last_used_date": "",
         "daily_usage_count": 0
     }
@@ -351,49 +350,9 @@ def save_user_data(user_id, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def is_premium_user(user_id):
-    """ユーザーがプレミアムかどうかを判定"""
-    try:
-        # サーバーオーナーの特別判定
-        community_guild = bot.get_guild(int(settings.get("community_server_id")))
-        if not community_guild:
-            logger.warning(f"Community server not found: {settings.get('community_server_id')}")
-            return False
-        
-        # オーナーチェック（Discord APIベース）
-        if int(user_id) == community_guild.owner_id:
-            logger.info(f"User {user_id} is server owner - granting premium access")
-            return True
-        
-        # オーナーチェック（設定ファイルベース）
-        owner_user_id = settings.get("owner_user_id")
-        if owner_user_id and str(user_id) == str(owner_user_id):
-            logger.info(f"User {user_id} is configured owner - granting premium access")
-            return True
-        
-        logger.info(f"Debug: Checking user {user_id} in guild {community_guild.name}")
-        
-        member = community_guild.get_member(int(user_id))
-        if not member:
-            logger.warning(f"User {user_id} not found in community server {community_guild.name}")
-            logger.info(f"Debug: Guild has {community_guild.member_count} members")
-            logger.info(f"Debug: This may be due to the user having a role higher than the Bot's role")
-            return False
-        
-        logger.info(f"Debug: Found member {member.name}#{member.discriminator}")
-        logger.info(f"Debug: Member roles: {[f'{role.name}({role.id})' for role in member.roles]}")
-        
-        # プレミアムロールの確認
-        premium_role_id = int(settings.get("premium_role_id"))
-        logger.info(f"Debug: Looking for premium role ID: {premium_role_id}")
-        
-        has_premium_role = any(role.id == premium_role_id for role in member.roles)
-        
-        logger.info(f"Premium check for user {user_id} ({member.name}): {has_premium_role}")
-        return has_premium_role
-        
-    except Exception as e:
-        logger.error(f"Error checking premium status for user {user_id}: {e}")
-        return False
+    """ユーザーがプレミアムかどうかを判定（常にTrueを返す）"""
+    logger.info(f"User {user_id} is granted premium access by default.")
+    return True
 
 def can_use_feature(user_data, is_premium):
     """機能使用可能かチェックし、使用回数を更新"""
@@ -416,22 +375,7 @@ def can_use_feature(user_data, is_premium):
         
         return True, None
     
-    # 無料ユーザーの制限チェック
-    last_used_date = user_data.get("last_used_date", "")
-    daily_usage_count = user_data.get("daily_usage_count", 0)
-    
-    # 日付が変わった場合はカウントをリセット
-    if last_used_date != today:
-        user_data["last_used_date"] = today
-        user_data["daily_usage_count"] = 1
-        return True, None
-    
-    # 同じ日の場合は制限チェック
-    if daily_usage_count >= FREE_USER_DAILY_LIMIT:
-        return False, f"😅 今日の分の利用回数を使い切っちゃいました！\n無料プランでは1日{FREE_USER_DAILY_LIMIT}回まで利用できます。明日また遊びに来てくださいね！✨\n\n💎 **もっと使いたい場合は有料プランがおすすめです！**\n🤖 このBotのプロフィールを見ると、プレミアム会員の詳細と登録方法が載ってるよ〜"
-    
-    # 使用回数を増加
-    user_data["daily_usage_count"] = daily_usage_count + 1
+    # 無料ユーザーの制限チェック（削除）
     return True, None
 
 def make_praise_image(praise_text):
@@ -979,7 +923,7 @@ class CustomPromptModal(discord.ui.Modal, title='X投稿用カスタムプロン
             if user_data is None:
                 user_data = {
                     "custom_prompt_x_post": "",
-                    "status": "free",
+                    "status": "premium",
                     "last_used_date": "",
                     "daily_usage_count": 0
                 }
@@ -1047,7 +991,7 @@ class CustomArticlePromptModal(discord.ui.Modal, title='記事作成用カスタ
                     "custom_prompt_x_post": "",
                     "custom_prompt_article": "",
                     "custom_prompt_memo": "",
-                    "status": "free",
+                    "status": "premium",
                     "last_used_date": "",
                     "daily_usage_count": 0
                 }
@@ -1089,35 +1033,10 @@ async def set_custom_prompt_article_command(interaction: discord.Interaction):
     await interaction.response.send_modal(modal)
 
 # メモ作成用カスタムプロンプト設定のModalクラス
-class CustomMemoPromptModal(discord.ui.Modal, title='メモ作成用カスタムプロンプト設定'):
-    def __init__(self):
-        super().__init__()
+class CustomMemoPromptModal(discord.ui.Modal, title='メモ作成用カスタムプロンプト設定'):    def __init__(self):        super().__init__()    # テキスト入力エリア（複数行対応）    prompt_input = discord.ui.TextInput(        label='カスタムプロンプト',        placeholder='メモ作成用のプロンプトを入力してください...
+改行も使用できます。
 
-    # テキスト入力エリア（複数行対応）
-    prompt_input = discord.ui.TextInput(
-        label='カスタムプロンプト',
-        placeholder='メモ作成用のプロンプトを入力してください...\n改行も使用できます。\n\n※ 空のまま送信するとカスタムプロンプトが無効になり、デフォルトプロンプトが使用されます。',
-        style=discord.TextStyle.paragraph,  # 複数行入力
-        max_length=2000,
-        required=False
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            prompt = self.prompt_input.value.strip()  # 前後の空白を削除
-            
-            # ユーザーデータを読み込み（存在しない場合は新規作成）
-            user_id = interaction.user.id
-            user_data = load_user_data(user_id)
-            if user_data is None:
-                user_data = {
-                    "custom_prompt_x_post": "",
-                    "custom_prompt_article": "",
-                    "custom_prompt_memo": "",
-                    "status": "free",
-                    "last_used_date": "",
-                    "daily_usage_count": 0
-                }
+※ 空のまま送信するとカスタムプロンプトが無効になり、デフォルトプロンプトが使用されます。',        style=discord.TextStyle.paragraph,  # 複数行入力        max_length=2000,        required=False    )    async def on_submit(self, interaction: discord.Interaction):        try:            prompt = self.prompt_input.value.strip()  # 前後の空白を削除                        # ユーザーデータを読み込み（存在しない場合は新規作成）            user_id = interaction.user.id            user_data = load_user_data(user_id)            if user_data is None:                user_data = {                    "custom_prompt_x_post": "",                    "custom_prompt_article": "",                    "custom_prompt_memo": "",                    "status": "premium",                    "last_used_date": "",                    "daily_usage_count": 0                }
             
             # メモ用カスタムプロンプトを更新
             user_data["custom_prompt_memo"] = prompt
@@ -1401,7 +1320,7 @@ async def on_raw_reaction_add(payload):
                     "custom_prompt_x_post": "",
                     "custom_prompt_article": "",
                     "custom_prompt_memo": "",
-                    "status": "free",
+                    "status": "premium",
                     "last_used_date": "",
                     "daily_usage_count": 0
                 }
@@ -1420,7 +1339,7 @@ async def on_raw_reaction_add(payload):
             # ユーザー情報とstatusを更新
             user_data["user_id"] = str(user.id)
             user_data["username"] = user.name
-            user_data["status"] = "premium" if is_premium else "free"
+            user_data["status"] = "premium"
             
             # 使用制限チェック
             can_use, limit_message = can_use_feature(user_data, is_premium)
@@ -1462,7 +1381,7 @@ async def on_raw_reaction_add(payload):
                     await check_content_for_urls(input_text, user, channel)
                     
                     # モデルを選択
-                    model = PREMIUM_USER_MODEL if is_premium else FREE_USER_MODEL
+                    model = PREMIUM_USER_MODEL
                     
                     # 処理開始メッセージを送信
                     message_link = f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
@@ -1601,7 +1520,7 @@ async def on_raw_reaction_add(payload):
                     await channel.send(f"{user.mention} わー！褒めさせて〜！ちょっと待っててね✨\n📎 元メッセージ: {message_link}")
                     
                     # モデルを選択
-                    model = PREMIUM_USER_MODEL if is_premium else FREE_USER_MODEL
+                    model = PREMIUM_USER_MODEL
                     
                     # 褒めプロンプトを読み込み
                     praise_prompt = None
@@ -1718,7 +1637,7 @@ async def on_raw_reaction_add(payload):
                     await check_content_for_urls(input_text, user, channel)
                     
                     # モデルを選択
-                    model = PREMIUM_USER_MODEL if is_premium else FREE_USER_MODEL
+                    model = PREMIUM_USER_MODEL
                     
                     # 処理開始メッセージを送信
                     message_link = f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
@@ -1815,7 +1734,7 @@ async def on_raw_reaction_add(payload):
                     await channel.send(f"{user.mention} 📝 メモを作るよ〜！ちょっと待っててね\n📎 元メッセージ: {message_link}")
                     
                     # モデルを選択
-                    model = PREMIUM_USER_MODEL if is_premium else FREE_USER_MODEL
+                    model = PREMIUM_USER_MODEL
                     
                     # メモ用プロンプトを読み込み
                     memo_prompt = None
@@ -1983,7 +1902,7 @@ async def on_raw_reaction_add(payload):
                     await channel.send(f"{user.mention} 📝 記事を作成するよ〜！ちょっと待っててね\n📎 元メッセージ: {message_link}")
                     
                     # モデルを選択
-                    model = PREMIUM_USER_MODEL if is_premium else FREE_USER_MODEL
+                    model = PREMIUM_USER_MODEL
                     
                     # 記事用プロンプトを読み込み
                     article_prompt = None
