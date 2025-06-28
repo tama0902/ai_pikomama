@@ -1,5 +1,7 @@
 import discord
 from discord.ext import commands
+from flask import Flask
+from threading import Thread
 import json
 import os
 from pathlib import Path
@@ -256,6 +258,20 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # 統計管理インスタンスを作成
 stats_manager = StatsManager()
+
+# Flaskウェブサーバーの追加
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080) # Replitのデフォルトポート
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 
 def load_server_data(server_id):
@@ -2171,5 +2187,4 @@ def start_bot():
         logger.error(traceback.format_exc())
     return "Bot is alive!"
 
-if __name__ == '__main__':
-    start_bot()
+bot.run(TOKEN)

@@ -6,3 +6,4 @@ pydub>=0.25.1
 Pillow>=10.0.0
 aiohttp>=3.8.0
 flask
+gunicorn
