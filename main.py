@@ -2124,13 +2124,7 @@ async def on_message(message):
 
 
 
-if __name__ == "__main__":
-    if TOKEN is None:
-        logger.error("エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
-    else:
-        try:
-            logger.info("Botを起動しています...")
-            # Webサーバーの起動 (ReplitのKeep-Alive用)
+# Webサーバーの起動 (ReplitのKeep-Alive用)
 from flask import Flask
 from threading import Thread
 
@@ -2138,6 +2132,28 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
+    return "Bot is alive!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8080) # Replitのデフォルトポート
+
+def keep_alive():
+    server = Thread(target=run_flask)
+    server.start()
+
+# Botの起動
+if __name__ == "__main__":
+    if TOKEN is None:
+        logger.error("エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
+    else:
+        try:
+            logger.info("Botを起動しています...")
+            keep_alive() # Webサーバーを起動
+            bot.run(TOKEN) # Discordボットを起動
+        except Exception as e:
+            logger.error(f"Bot起動エラー: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     return "Bot is alive!"
 
 def run_flask():
