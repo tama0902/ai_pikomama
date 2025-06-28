@@ -2130,7 +2130,27 @@ if __name__ == "__main__":
     else:
         try:
             logger.info("Botを起動しています...")
-            bot.run(TOKEN)
+            # Webサーバーの起動 (ReplitのKeep-Alive用)
+from flask import Flask
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8080) # Replitのデフォルトポート
+
+def keep_alive():
+    server = Thread(target=run_flask)
+    server.start()
+
+# Botの起動前にkeep_alive()を呼び出す
+if __name__ == '__main__':
+    keep_alive()
+    bot.run(TOKEN)
         except Exception as e:
             logger.error(f"Bot起動エラー: {e}")
             import traceback
