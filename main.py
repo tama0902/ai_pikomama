@@ -1236,7 +1236,7 @@ async def activate_command(interaction: discord.Interaction):
 
 👇試しに下のリアクションを押してみて👇"""
 
-👇試しに下のリアクションを押してみて👇""""""
+👇試しに下のリアクションを押してみて👇"""
         
         await interaction.response.send_message(guide_message)
         
