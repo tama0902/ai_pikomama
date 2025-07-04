@@ -68,5 +68,5 @@ python main.py
 echo.
 echo [%date% %time%] Bot has stopped - Restarting in 3 seconds...
 echo [INFO] Press Ctrl+C now to stop, or wait for automatic restart...
-timeout /t 3
+ping -n 4 127.0.0.1 > nul
 goto restart_loop
