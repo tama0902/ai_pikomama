@@ -1408,8 +1408,8 @@ async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id:
         return
     
-    # リアクションの種類をチェック
-        if payload.emoji.name in ['👍', '🧵', '🎤', '❤️', '❓', '✏️', '📝']:
+        # リアクションの種類をチェック
+    if payload.emoji.name in ['👍', '🧵', '🎤', '❤️', '❓', '✏️', '📝']:
         server_id = str(payload.guild_id)
         channel_id = str(payload.channel_id)
         
