@@ -1234,7 +1234,7 @@ async def activate_command(interaction: discord.Interaction):
 ✏️ **メモ作成** - Obsidian用のMarkdownメモを自動生成
 📝 **記事作成** - 記事を作成（カスタムプロンプト対応）
 
-👇試しに下のリアクションを押してみて👇"""
+\u{1f447}試しに下のリアクションを押してみて\u{1f447}"""
 
 👇試しに下のリアクションを押してみて👇"""
         
