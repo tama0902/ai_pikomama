@@ -1221,7 +1221,7 @@ async def activate_command(interaction: discord.Interaction):
         save_server_data(server_id, server_data)
         
         # 使い方ガイドメッセージを作成
-        guide_message = f"""        guide_message = f"""✅ このチャンネル（{interaction.channel.name}）でBotを有効化しました！
+        guide_message = f"""        guide_message = f"""\u2705 このチャンネル（{interaction.channel.name}）でBotを有効化しました！
 
 **📖 使い方**
 メッセージに以下のリアクションを付けると、それぞれの機能が動作します：
