@@ -304,6 +304,7 @@ def migrate_user_data(user_data, user_id, username):
         "user_id": str(user_id),
         "username": username,
         "custom_prompt_x_post": "",
+        "custom_prompt_threads_post": "",
         "custom_prompt_article": "",
         "custom_prompt_memo": "",
         "status": "premium",
@@ -901,6 +902,11 @@ async def help_command(interaction: discord.Interaction):
         inline=False
     )
     embed.add_field(
+        name="/set_custom_prompt_threads_post", 
+        value="Threads投稿用のカスタムプロンプトを設定（空白入力で無効化）", 
+        inline=False
+    )
+    embed.add_field(
         name="/set_custom_prompt_article", 
         value="記事作成用のカスタムプロンプトを設定（空白入力で無効化）", 
         inline=False
@@ -1047,6 +1053,75 @@ async def set_custom_prompt_article_command(interaction: discord.Interaction):
     modal = CustomArticlePromptModal(current_prompt)
     await interaction.response.send_modal(modal)
 
+# Threads投稿用カスタムプロンプト設定のModalクラス
+class CustomThreadsPromptModal(discord.ui.Modal, title='Threads投稿用カスタムプロンプト設定'):
+    def __init__(self, current_prompt=""):
+        super().__init__()
+        # テキスト入力エリア（複数行対応）
+        self.prompt_input = discord.ui.TextInput(
+            label='カスタムプロンプト',
+            placeholder='Threads投稿生成用のプロンプトを入力してください...\n改行も使用できます。\n\n※ 空のまま送信するとカスタムプロンプトが無効になり、デフォルトプロンプトが使用されます。',
+            style=discord.TextStyle.paragraph,  # 複数行入力
+            max_length=2000,
+            required=False,
+            default=current_prompt  # 既存の値をプリフィル
+        )
+        self.add_item(self.prompt_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            prompt = self.prompt_input.value.strip()  # 前後の空白を削除
+            
+            # ユーザーデータを読み込み（存在しない場合は新規作成）
+            user_id = interaction.user.id
+            user_data = load_user_data(user_id)
+            if user_data is None:
+                user_data = {
+                    "custom_prompt_x_post": "",
+                    "custom_prompt_threads_post": "",
+                    "custom_prompt_article": "",
+                    "custom_prompt_memo": "",
+                    "status": "premium",
+                    "last_used_date": "",
+                    "daily_usage_count": 0
+                }
+            
+            # Threads用カスタムプロンプトを更新
+            user_data["custom_prompt_threads_post"] = prompt
+            
+            # ユーザーデータを保存
+            save_user_data(user_id, user_data)
+            
+            # 設定内容に応じてメッセージを変更
+            if prompt:
+                print(f"ユーザー {interaction.user.name} ({user_id}) がThreads用カスタムプロンプトを設定しました")
+                print(f"プロンプト内容: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
+                await interaction.response.send_message("✅ Threads投稿用カスタムプロンプトを設定しました！", ephemeral=True)
+            else:
+                print(f"ユーザー {interaction.user.name} ({user_id}) がThreads用カスタムプロンプトを無効化しました")
+                await interaction.response.send_message("✅ Threads投稿用カスタムプロンプトを無効化しました。デフォルトプロンプトを使用します。", ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Threads用カスタムプロンプト設定エラー: {e}")
+            await interaction.response.send_message("❌ エラーが発生しました。管理者にお問い合わせください。", ephemeral=True)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        logger.error(f"Modal エラー: {error}")
+        await interaction.response.send_message("❌ エラーが発生しました。管理者にお問い合わせください。", ephemeral=True)
+
+@bot.tree.command(name="set_custom_prompt_threads_post", description="Threads投稿用のカスタムプロンプトを設定します")
+async def set_custom_prompt_threads_post_command(interaction: discord.Interaction):
+    """Threads用カスタムプロンプト設定コマンド"""
+    # 既存のユーザーデータを読み込み
+    user_id = interaction.user.id
+    user_data = load_user_data(user_id)
+    current_prompt = ""
+    if user_data and "custom_prompt_threads_post" in user_data:
+        current_prompt = user_data["custom_prompt_threads_post"]
+    
+    modal = CustomThreadsPromptModal(current_prompt)
+    await interaction.response.send_modal(modal)
+
 # メモ作成用カスタムプロンプト設定のModalクラス
 class CustomMemoPromptModal(discord.ui.Modal, title='メモ作成用カスタムプロンプト設定'):
     def __init__(self, current_prompt=""):
@@ -1150,8 +1225,9 @@ async def activate_command(interaction: discord.Interaction):
             f"✅ このチャンネル（{interaction.channel.name}）でBotを有効化しました！\n\n"
             "**📖 使い方**\n"
             "メッセージに以下のリアクションを付けると、それぞれの機能が動作します：\n\n"
-            "👍 **X投稿生成** - メッセージをX（旧Twitter）投稿用に最適化\n"
-            "🎤 **音声文字起こし** - 音声ファイルをテキストに変換\n"
+            "👍 **X投稿生成** - メッセージをX（旧Twitter）投稿用に最適化
+"            "🧵 **Threads投稿生成** - メッセージをThreads投稿用に最適化
+"            "🎤 **音声文字起こし** - 音声ファイルをテキストに変換
             "❓ **AI解説** - メッセージ内容を詳しく解説\n"
             "❤️ **褒めメッセージ** - 熱烈な応援メッセージと画像を生成\n"
             "✏️ **メモ作成** - Obsidian用のMarkdownメモを自動生成\n"
@@ -1163,7 +1239,7 @@ async def activate_command(interaction: discord.Interaction):
         
         # 送信したメッセージを取得してリアクションを追加
         message = await interaction.original_response()
-        reactions = ['👍', '❓', '❤️', '✏️', '📝']
+        reactions = ['👍', '🧵', '❓', '❤️', '✏️', '📝']
         for emoji in reactions:
             await message.add_reaction(emoji)
             await asyncio.sleep(0.5)  # リアクション追加の間隔を空ける
@@ -1332,7 +1408,7 @@ async def on_raw_reaction_add(payload):
         return
     
     # リアクションの種類をチェック
-    if payload.emoji.name in ['👍', '🎤', '❤️', '❓', '✏️', '📝']:
+        if payload.emoji.name in ['👍', '🧵', '🎤', '❤️', '❓', '✏️', '📝']:
         server_id = str(payload.guild_id)
         channel_id = str(payload.channel_id)
         
@@ -1361,6 +1437,7 @@ async def on_raw_reaction_add(payload):
                     "user_id": str(user.id),
                     "username": user.name,
                     "custom_prompt_x_post": "",
+                    "custom_prompt_threads_post": "",
                     "custom_prompt_article": "",
                     "custom_prompt_memo": "",
                     "status": "premium",
@@ -1514,6 +1591,110 @@ async def on_raw_reaction_add(payload):
                                      f"• テキストファイル（.txt）を添付する\n"
                                      f"• 音声ファイルの場合は🎤で文字起こしをしてからそのファイルに👍する\n\n"
                                      f"音声ファイルのみでは直接X投稿は作成できません。")
+            
+            # 🧵 Threads投稿作成
+            elif payload.emoji.name == '🧵':
+                # メッセージ内容または添付ファイル、Embedからテキストを取得
+                input_text = message.content
+                
+                # Embedがある場合は内容を抽出
+                embed_content = extract_embed_content(message)
+                if embed_content:
+                    if input_text:
+                        input_text += f"\n\n【Embed内容】\n{embed_content}"
+                    else:
+                        input_text = embed_content
+                    logger.info("Embed内容を追加")
+                
+                # 添付ファイルがある場合、テキストファイルの内容を読み取り
+                if message.attachments:
+                    for attachment in message.attachments:
+                        file_content = await read_text_attachment(attachment)
+                        if file_content:
+                            if input_text:
+                                input_text += f"\n\n【ファイル: {attachment.filename}】\n{file_content}"
+                            else:
+                                input_text = f"【ファイル: {attachment.filename}】\n{file_content}"
+                            logger.info(f"添付ファイルの内容を追加: {attachment.filename}")
+                
+                if input_text:
+                    # URL検出・警告
+                    await check_content_for_urls(input_text, user, channel)
+                    
+                    # モデルを選択
+                    model = PREMIUM_USER_MODEL
+                    
+                    # 処理開始メッセージを送信
+                    message_link = f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
+                    await channel.send(f"{user.mention} Threads用の投稿を作ってあげるね〜！ちょっと待っててね\n📎 元メッセージ: {message_link}")
+                    
+                    # Threads投稿用プロンプトを読み込み（カスタムプロンプトを優先）
+                    threads_prompt = None
+                    
+                    # 1. ユーザーのカスタムプロンプトをチェック
+                    if user_data and user_data.get('custom_prompt_threads_post'):
+                        threads_prompt = user_data['custom_prompt_threads_post']
+                        logger.info(f"ユーザー {user.name} のカスタムプロンプトを使用")
+                    
+                    # 2. カスタムプロンプトがない場合はデフォルトプロンプトファイルを使用
+                    if not threads_prompt:
+                        prompt_path = script_dir / "prompt" / "threads_post.txt"
+                        if prompt_path.exists():
+                            with open(prompt_path, 'r', encoding='utf-8') as f:
+                                threads_prompt = f.read()
+                            logger.info("デフォルトプロンプトファイルを使用")
+                        else:
+                            threads_prompt = "あなたはDiscordの投稿をThreads用に書き直すアシスタントです。500文字以内で、絵文字を使いながらフレンドリーな投稿を作成してください。"
+                            logger.info("フォールバックプロンプトを使用")
+                    
+                    # プロンプトにJSON出力指示を追加
+                    threads_prompt += "\n\n出力は以下のJSON形式で返してください：\n{\"content\": \"Threads投稿用のテキスト\"}"
+                    
+                    # OpenAI APIで投稿を生成
+                    if client_openai:
+                        try:
+                            response = client_openai.chat.completions.create(
+                                model=model,
+                                messages=[
+                                    {"role": "system", "content": threads_prompt},
+                                    {"role": "user", "content": input_text}
+                                ],
+                                max_tokens=1500,
+                                temperature=0.9,
+                                response_format={"type": "json_object"}
+                            )
+                            
+                            # JSONレスポンスをパース
+                            response_content = response.choices[0].message.content
+                            try:
+                                response_json = json.loads(response_content)
+                                summary = response_json.get("content", response_content)
+                            except json.JSONDecodeError:
+                                logger.warning(f"JSON解析エラー、生のレスポンスを使用: {response_content}")
+                                summary = response_content
+                            
+                            # 結果を送信（Discord制限に合わせて文字数制限）
+                            display_summary = summary[:4000] + "..." if len(summary) > 4000 else summary
+                            
+                            embed = discord.Embed(
+                                title="📝 Threads投稿用テキスト",
+                                description=display_summary,
+                                color=0x000000  # Black color for Threads
+                            )
+                            
+                            # 完了メッセージと結果を送信
+                            await channel.send("🎉 できたよ〜！下のテキストをコピーしてThreadsに投稿してね！")
+                            await channel.send(embed=embed)
+                            
+                        except Exception as e:
+                            logger.error(f"OpenAI API エラー: {e}")
+                            await channel.send(f"{user.mention} ❌ 投稿の生成中にエラーが発生しました。")
+                    else:
+                        logger.error("エラー: OpenAI APIキーが設定されていません")
+                        await channel.send(f"{user.mention} ❌ エラーが発生しました。管理者にお問い合わせください。")
+                else:
+                    await channel.send(f"{user.mention} ⚠️ **Threads投稿を作成するためにはテキストが必要です**\n\n"
+                                     f"テキストメッセージを投稿するか、テキストファイルを添付してから🧵リアクションしてください。")
             
             # 🎤 マイク：音声・動画文字起こし
             elif payload.emoji.name == '🎤':
